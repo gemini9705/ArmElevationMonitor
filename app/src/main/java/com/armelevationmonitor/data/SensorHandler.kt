@@ -10,7 +10,7 @@ class SensorHandler(private val context: Context) : SensorEventListener {
     private var accelerometer: Sensor? = null
     private var gyroscope: Sensor? = null
 
-    // Variables to hold the processed data
+    // Variables to hold processed data
     private var linearAcceleration = FloatArray(3)
     private var angularVelocity = FloatArray(3)
 
@@ -39,23 +39,22 @@ class SensorHandler(private val context: Context) : SensorEventListener {
             }
             Sensor.TYPE_GYROSCOPE -> {
                 angularVelocity = event.values.clone()
-                calculateAngle()
+                // Optionally, combine gyroscope data for more precise angles
             }
         }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // Handle accuracy changes if needed
+        // Handle changes in sensor accuracy if necessary
     }
 
     private fun calculateAngle() {
-        // Example using simple linear acceleration for angle computation
-        val gravity = 9.81f
+        // Basic tilt angle calculation using linear acceleration
         val ax = linearAcceleration[0]
         val ay = linearAcceleration[1]
         val az = linearAcceleration[2]
 
-        // Basic tilt angle calculation using linear acceleration
+        // Compute the tilt angle relative to gravity
         currentAngle = Math.toDegrees(Math.atan2(ay.toDouble(), Math.sqrt((ax * ax + az * az).toDouble()))).toFloat()
     }
 }

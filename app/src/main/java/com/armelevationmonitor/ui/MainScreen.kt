@@ -1,4 +1,5 @@
 import android.annotation.SuppressLint
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -12,7 +13,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,6 +21,7 @@ fun MainScreen(viewModel: MeasurementViewModel = viewModel()) {
     // Directly observe mutableStateOf values
     val isConnected = viewModel.isConnected.value
     val angle = viewModel.angle.value
+    val hasData = viewModel.measurementData.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -67,11 +68,14 @@ fun MainScreen(viewModel: MeasurementViewModel = viewModel()) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Export Data Button
+            // Export Data Button with Feedback
             Button(
-                onClick = { viewModel.exportData(context) }, // Pass `context` here directly
+                onClick = {
+                    val result = viewModel.exportData(context)
+                    Toast.makeText(context, result, Toast.LENGTH_LONG).show()
+                },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = isConnected
+                enabled = isConnected && hasData // Enable only if connected and data exists
             ) {
                 Text("Export Data")
             }
@@ -79,8 +83,7 @@ fun MainScreen(viewModel: MeasurementViewModel = viewModel()) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Angle Display
-            Text(text = "Current Angle: $angle°")
+            Text(text = "Current Angle: ${"%.2f".format(angle)}°") // Show angle with 2 decimal places
         }
     }
 }
-
