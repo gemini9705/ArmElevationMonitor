@@ -1,4 +1,5 @@
 import android.annotation.SuppressLint
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
@@ -16,8 +17,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModel: MeasurementViewModel = viewModel()) {
-    val context = LocalContext.current
+fun MainScreen(context: Context) {
+    // Create ViewModel using the factory
+    val factory = MeasurementViewModelFactory(context)
+    val viewModel: MeasurementViewModel = viewModel(factory = factory)
     // Directly observe mutableStateOf values
     val isConnected = viewModel.isConnected.value
     val angle = viewModel.angle.value

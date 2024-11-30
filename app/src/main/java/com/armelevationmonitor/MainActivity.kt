@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface {
-                    MainScreen() // Load the MainScreen UI
+                    MainScreen(context = this) // Load the MainScreen UI
                 }
             }
         }
