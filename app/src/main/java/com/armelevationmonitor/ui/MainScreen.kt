@@ -21,10 +21,13 @@ fun MainScreen(context: Context) {
     // Create ViewModel using the factory
     val factory = MeasurementViewModelFactory(context)
     val viewModel: MeasurementViewModel = viewModel(factory = factory)
+
     // Directly observe mutableStateOf values
     val isConnected = viewModel.isConnected.value
-    val angle = viewModel.angle.value
-    val hasData = viewModel.measurementData.isNotEmpty()
+    val angleAlgorithm1 = viewModel.angleAlgorithm1.value
+    val angleAlgorithm2 = viewModel.angleAlgorithm2.value
+    val hasDataAlgorithm1 = viewModel.measurementDataAlgorithm1.isNotEmpty()
+    val hasDataAlgorithm2 = viewModel.measurementDataAlgorithm2.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -71,22 +74,38 @@ fun MainScreen(context: Context) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Export Data Button with Feedback
+            // Export Data for Algorithm 1
             Button(
                 onClick = {
-                    val result = viewModel.exportData(context)
+                    val result = viewModel.exportData(context, algorithm = 1) // Export Algorithm 1 data
                     Toast.makeText(context, result, Toast.LENGTH_LONG).show()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = isConnected && hasData // Enable only if connected and data exists
+                enabled = isConnected && hasDataAlgorithm1 // Enable only if connected and data exists for Algorithm 1
             ) {
-                Text("Export Data")
+                Text("Export Algorithm 1 Data")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Angle Display
-            Text(text = "Current Angle: ${"%.2f".format(angle)}°") // Show angle with 2 decimal places
+            // Export Data for Algorithm 2
+            Button(
+                onClick = {
+                    val result = viewModel.exportData(context, algorithm = 2) // Export Algorithm 2 data
+                    Toast.makeText(context, result, Toast.LENGTH_LONG).show()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = isConnected && hasDataAlgorithm2 // Enable only if connected and data exists for Algorithm 2
+            ) {
+                Text("Export Algorithm 2 Data")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Display Angles
+            Text(text = "Angle (Algorithm 1): ${"%.2f".format(angleAlgorithm1)}°") // Show Algorithm 1 angle
+            Text(text = "Angle (Algorithm 2): ${"%.2f".format(angleAlgorithm2)}°") // Show Algorithm 2 angle
         }
     }
 }
+
