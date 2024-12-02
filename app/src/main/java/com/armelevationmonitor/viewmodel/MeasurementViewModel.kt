@@ -7,8 +7,10 @@ import java.util.TimerTask
 
 class MeasurementViewModel(context: Context) : ViewModel() {
     private val sensorHandler = SensorHandler(context)
-    val angle = mutableStateOf(0f)
-    val measurementData = mutableListOf<Pair<Long, Float>>()
+    val angleAlgorithm1 = mutableStateOf(0f) // For Algorithm 1
+    val angleAlgorithm2 = mutableStateOf(0f) // For Algorithm 2
+    val measurementDataAlgorithm1 = mutableListOf<Pair<Long, Float>>()
+    val measurementDataAlgorithm2 = mutableListOf<Pair<Long, Float>>()
     val isConnected = mutableStateOf(false)
     private var timer: Timer? = null
 
@@ -21,14 +23,22 @@ class MeasurementViewModel(context: Context) : ViewModel() {
 
     fun startMeasurement() {
         if (!isConnected.value) return // Ensure the sensor is connected
-        measurementData.clear()
+        measurementDataAlgorithm1.clear()
+        measurementDataAlgorithm2.clear()
         timer = Timer().apply {
             scheduleAtFixedRate(object : TimerTask() {
                 override fun run() {
                     val currentTime = System.currentTimeMillis()
-                    val currentAngle = sensorHandler.currentAngle
-                    angle.value = currentAngle
-                    measurementData.add(Pair(currentTime, currentAngle))
+                    val angle1 = sensorHandler.currentAngleAlgorithm1
+                    val angle2 = sensorHandler.currentAngleAlgorithm2
+
+                    // Update mutable state values for the UI
+                    angleAlgorithm1.value = angle1
+                    angleAlgorithm2.value = angle2
+
+                    // Record measurements for export
+                    measurementDataAlgorithm1.add(Pair(currentTime, angle1))
+                    measurementDataAlgorithm2.add(Pair(currentTime, angle2))
                 }
             }, 0, 100) // Collect data every 100ms
         }
@@ -40,13 +50,18 @@ class MeasurementViewModel(context: Context) : ViewModel() {
         sensorHandler.stop()
     }
 
-    fun exportData(context: Context): String {
+    fun exportData(context: Context, algorithm: Int): String {
         return try {
-            val fileName = "angle_data_${System.currentTimeMillis()}.csv"
+            val fileName = "angle_data_${System.currentTimeMillis()}_algorithm${algorithm}.csv"
             val file = File(context.getExternalFilesDir(null), fileName)
             file.bufferedWriter().use { writer ->
                 writer.write("Timestamp,Angle\n")
-                measurementData.forEach { (timestamp, angle) ->
+                val dataToExport = if (algorithm == 1) {
+                    measurementDataAlgorithm1
+                } else {
+                    measurementDataAlgorithm2
+                }
+                dataToExport.forEach { (timestamp, angle) ->
                     writer.write("$timestamp,$angle\n")
                 }
             }
