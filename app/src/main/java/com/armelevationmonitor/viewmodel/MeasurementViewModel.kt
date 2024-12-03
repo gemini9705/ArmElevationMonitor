@@ -28,7 +28,7 @@ class MeasurementViewModel(context: Context) : ViewModel() {
         measurementDataAlgorithm2.clear()
         timer?.cancel()
         timer = Timer().apply {
-            schedule(object : TimerTask() {
+            scheduleAtFixedRate(object : TimerTask() {
                 override fun run() {
                     val currentTime = System.currentTimeMillis()
                     val angle1 = sensorHandler.currentAngleAlgorithm1
