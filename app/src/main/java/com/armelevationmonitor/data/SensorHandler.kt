@@ -48,13 +48,34 @@ class SensorHandler(private val context: Context) : SensorEventListener {
     }
 
     fun reset() {
+        stop() // Unregister listeners
         previousFilteredAngle = 0f
         integratedGyroAngle = 0f
         previousTimestamp = 0L
         linearAcceleration = FloatArray(3)
         angularVelocity = FloatArray(3)
         println("SensorHandler state has been reset.")
+
+        // Re-register the sensors
+        start()
     }
+
+    fun startMeasurement() {
+        accelerometer?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+            println("Accelerometer registered for measurement.")
+        }
+        gyroscope?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+            println("Gyroscope registered for measurement.")
+        }
+    }
+
+    fun stopMeasurement() {
+        sensorManager.unregisterListener(this)
+        println("Sensors unregistered.")
+    }
+
 
 
     override fun onSensorChanged(event: SensorEvent) {
@@ -63,16 +84,19 @@ class SensorHandler(private val context: Context) : SensorEventListener {
                 linearAcceleration = event.values.clone()
                 calculateAlgorithm1()
                 calculateAlgorithm2()
+                println("SensorHandler: Linear acceleration updated. Algorithm1: $currentAngleAlgorithm1, Algorithm2: $currentAngleAlgorithm2")
             }
             Sensor.TYPE_GYROSCOPE -> {
                 val dt = calculateDeltaTime(event.timestamp)
                 if (dt > 0) {
                     val angularVelocityZ = event.values[2] // Gyroscope rotation around Z-axis
-                    integratedGyroAngle += angularVelocityZ * dt // Integrate angular velocity over time
+                    integratedGyroAngle += angularVelocityZ * dt
+                    println("SensorHandler: Gyroscope updated. Integrated angle: $integratedGyroAngle")
                 }
             }
         }
     }
+
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         // Handle accuracy changes if necessary
