@@ -12,13 +12,12 @@ class SensorHandler(private val context: Context) : SensorEventListener {
     private var accelerometer: Sensor? = null
     private var gyroscope: Sensor? = null
 
-    // Variables to hold processed data
-    private var linearAcceleration = FloatArray(3)
+        private var linearAcceleration = FloatArray(3)
     private var angularVelocity = FloatArray(3)
 
-    var currentAngleAlgorithm1: Float = 0f // For Algorithm 1
+    var currentAngleAlgorithm1: Float = 0f
         private set
-    var currentAngleAlgorithm2: Float = 0f // For Algorithm 2
+    var currentAngleAlgorithm2: Float = 0f
         private set
 
     private var previousFilteredAngle: Float = 0f // For EWMA filtering (Algorithm 1)
@@ -34,13 +33,29 @@ class SensorHandler(private val context: Context) : SensorEventListener {
     }
 
     fun start() {
-        accelerometer?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
-        gyroscope?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
+        accelerometer?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+            println("Accelerometer registered.")
+        }
+        gyroscope?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+            println("Gyroscope registered.")
+        }
     }
 
     fun stop() {
         sensorManager.unregisterListener(this)
     }
+
+    fun reset() {
+        previousFilteredAngle = 0f
+        integratedGyroAngle = 0f
+        previousTimestamp = 0L
+        linearAcceleration = FloatArray(3)
+        angularVelocity = FloatArray(3)
+        println("SensorHandler state has been reset.")
+    }
+
 
     override fun onSensorChanged(event: SensorEvent) {
         when (event.sensor.type) {

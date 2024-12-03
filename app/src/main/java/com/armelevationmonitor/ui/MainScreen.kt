@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlin.math.roundToInt
+import androidx.compose.foundation.layout.fillMaxWidth
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,7 +34,8 @@ fun MainScreen(context: Context) {
     val hasDataAlgorithm2 = viewModel.measurementDataAlgorithm2.isNotEmpty()
 
     // Extract graph data
-    val graphData = viewModel.measurementDataAlgorithm1.map { it.second }
+    val graphDataAlg1 = viewModel.measurementDataAlgorithm1.map { it.second }
+    val graphDataAlg2 = viewModel.measurementDataAlgorithm2.map { it.second }
 
     Scaffold(
         topBar = {
@@ -81,56 +82,65 @@ fun MainScreen(context: Context) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Export Data for Algorithm 1
+            // UI Buttons for Export
             Button(
                 onClick = {
                     val result = viewModel.exportData(context, algorithm = 1) // Export Algorithm 1 data
                     Toast.makeText(context, result, Toast.LENGTH_LONG).show()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = isConnected && hasDataAlgorithm1 // Enable only if connected and data exists for Algorithm 1
+                enabled = hasDataAlgorithm1 // Enable if Algorithm 1 has data
             ) {
                 Text("Export Algorithm 1 Data")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Export Data for Algorithm 2
             Button(
                 onClick = {
                     val result = viewModel.exportData(context, algorithm = 2) // Export Algorithm 2 data
                     Toast.makeText(context, result, Toast.LENGTH_LONG).show()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = isConnected && hasDataAlgorithm2 // Enable only if connected and data exists for Algorithm 2
+                enabled = hasDataAlgorithm2 // Enable if Algorithm 2 has data
             ) {
                 Text("Export Algorithm 2 Data")
             }
 
+
             Spacer(modifier = Modifier.height(16.dp))
 
             // Display Angles
-            Text(text = "Angle (Algorithm 1): ${"%.2f".format(angleAlgorithm1)}°") // Show Algorithm 1 angle
-            Text(text = "Angle (Algorithm 2): ${"%.2f".format(angleAlgorithm2)}°") // Show Algorithm 2 angle
+            Text(text = "Angle (Algorithm 1): ${"%.2f".format(angleAlgorithm1)}°")
+            Text(text = "Angle (Algorithm 2): ${"%.2f".format(angleAlgorithm2)}°")
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Graph Display
+            // Graph Display for Algorithm 1
             Text(text = "Live Graph (Algorithm 1)")
+            Spacer(modifier = Modifier.height(8.dp))
+            LiveGraph(graphDataAlg1, lineColor = Color.Blue)
+
             Spacer(modifier = Modifier.height(16.dp))
-            LiveGraph(graphData)
+
+            // Graph Display for Algorithm 2
+            Text(text = "Live Graph (Algorithm 2)")
+            Spacer(modifier = Modifier.height(8.dp))
+            LiveGraph(graphDataAlg2, lineColor = Color.Red)
         }
     }
 }
 
 @Composable
-fun LiveGraph(data: List<Float>) {
+fun LiveGraph(data: List<Float>, lineColor: Color = Color.Blue) {
     if (data.isEmpty()) {
         Text("No data to display")
         return
     }
 
-    Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+    ) {
         val path = Path().apply {
             moveTo(0f, size.height / 2) // Start at the center of the canvas
             data.forEachIndexed { index, value ->
@@ -139,6 +149,6 @@ fun LiveGraph(data: List<Float>) {
                 lineTo(x, y)
             }
         }
-        drawPath(path, Color.Blue, style = Stroke(width = 2.dp.toPx()))
+        drawPath(path, lineColor, style = Stroke(width = 2.dp.toPx()))
     }
 }

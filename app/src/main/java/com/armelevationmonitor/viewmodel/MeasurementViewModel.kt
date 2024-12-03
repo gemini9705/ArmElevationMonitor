@@ -1,9 +1,17 @@
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.Timer
-import java.util.TimerTask
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.*
 
 class MeasurementViewModel(context: Context) : ViewModel() {
     private val sensorHandler = SensorHandler(context)
@@ -12,7 +20,7 @@ class MeasurementViewModel(context: Context) : ViewModel() {
     val measurementDataAlgorithm1 = mutableListOf<Pair<Long, Float>>()
     val measurementDataAlgorithm2 = mutableListOf<Pair<Long, Float>>()
     val isConnected = mutableStateOf(false)
-    private var timer: Timer? = null
+    private var measurementJob: Job? = null
 
     fun connectSensor() {
         if (!isConnected.value) {
@@ -23,34 +31,48 @@ class MeasurementViewModel(context: Context) : ViewModel() {
 
     fun startMeasurement() {
         if (!isConnected.value) return // Ensure the sensor is connected
-        sensorHandler.start()
+
+        // Clear previous data only when starting a new session
         measurementDataAlgorithm1.clear()
         measurementDataAlgorithm2.clear()
-        timer?.cancel()
-        timer = Timer().apply {
-            scheduleAtFixedRate(object : TimerTask() {
-                override fun run() {
-                    val currentTime = System.currentTimeMillis()
-                    val angle1 = sensorHandler.currentAngleAlgorithm1
-                    val angle2 = sensorHandler.currentAngleAlgorithm2
 
-                    // Update mutable state values for the UI
+        // Start sensors and initiate data collection
+        sensorHandler.start()
+
+        // Start recording data in a coroutine
+        measurementJob = CoroutineScope(Dispatchers.Default).launch {
+            while (isActive) {
+                val currentTime = System.currentTimeMillis()
+                val angle1 = sensorHandler.currentAngleAlgorithm1
+                val angle2 = sensorHandler.currentAngleAlgorithm2
+                withContext(Dispatchers.Main) {
                     angleAlgorithm1.value = angle1
                     angleAlgorithm2.value = angle2
-
-                    // Record measurements for export
                     measurementDataAlgorithm1.add(Pair(currentTime, angle1))
                     measurementDataAlgorithm2.add(Pair(currentTime, angle2))
                 }
-            }, 0, 100) // Collect data every 100ms
+                delay(100) // Record data every 100ms
+            }
         }
     }
 
+
     fun stopMeasurement() {
-        timer?.cancel()
-        timer = null
+        // Stop the measurement coroutine if it's active
+        measurementJob?.cancel()
+        measurementJob = null
+
+        // Stop sensor updates
         sensorHandler.stop()
+
+        // Reset the angle states for the UI
+        angleAlgorithm1.value = 0f
+        angleAlgorithm2.value = 0f
+
+        // Recorded data is not cleared and is available for export
     }
+
+
 
     fun exportData(context: Context, algorithm: Int): String {
         return try {
