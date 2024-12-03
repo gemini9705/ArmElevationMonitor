@@ -23,8 +23,10 @@ class MeasurementViewModel(context: Context) : ViewModel() {
 
     fun startMeasurement() {
         if (!isConnected.value) return // Ensure the sensor is connected
+        sensorHandler.start()
         measurementDataAlgorithm1.clear()
         measurementDataAlgorithm2.clear()
+        timer?.cancel()
         timer = Timer().apply {
             scheduleAtFixedRate(object : TimerTask() {
                 override fun run() {
