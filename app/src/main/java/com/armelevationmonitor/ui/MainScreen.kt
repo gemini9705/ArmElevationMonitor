@@ -1,6 +1,7 @@
 import android.annotation.SuppressLint
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -10,9 +11,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlin.math.roundToInt
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,6 +32,9 @@ fun MainScreen(context: Context) {
     val angleAlgorithm2 = viewModel.angleAlgorithm2.value
     val hasDataAlgorithm1 = viewModel.measurementDataAlgorithm1.isNotEmpty()
     val hasDataAlgorithm2 = viewModel.measurementDataAlgorithm2.isNotEmpty()
+
+    // Extract graph data
+    val graphData = viewModel.measurementDataAlgorithm1.map { it.second }
 
     Scaffold(
         topBar = {
@@ -105,7 +112,33 @@ fun MainScreen(context: Context) {
             // Display Angles
             Text(text = "Angle (Algorithm 1): ${"%.2f".format(angleAlgorithm1)}°") // Show Algorithm 1 angle
             Text(text = "Angle (Algorithm 2): ${"%.2f".format(angleAlgorithm2)}°") // Show Algorithm 2 angle
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Graph Display
+            Text(text = "Live Graph (Algorithm 1)")
+            Spacer(modifier = Modifier.height(16.dp))
+            LiveGraph(graphData)
         }
     }
 }
 
+@Composable
+fun LiveGraph(data: List<Float>) {
+    if (data.isEmpty()) {
+        Text("No data to display")
+        return
+    }
+
+    Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+        val path = Path().apply {
+            moveTo(0f, size.height / 2) // Start at the center of the canvas
+            data.forEachIndexed { index, value ->
+                val x = size.width * index / data.size // Scale X
+                val y = size.height / 2 - value * 5 // Scale Y and invert direction
+                lineTo(x, y)
+            }
+        }
+        drawPath(path, Color.Blue, style = Stroke(width = 2.dp.toPx()))
+    }
+}
