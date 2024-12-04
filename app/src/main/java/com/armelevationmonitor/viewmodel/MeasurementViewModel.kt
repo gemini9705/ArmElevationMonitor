@@ -115,6 +115,5 @@ class MeasurementViewModel(context: Context) : ViewModel() {
         val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         return sensorManager.getDefaultSensor(sensorType) != null
     }
-
 }
 

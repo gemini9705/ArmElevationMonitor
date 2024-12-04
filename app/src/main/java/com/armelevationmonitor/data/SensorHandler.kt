@@ -34,12 +34,12 @@ class SensorHandler(val context: Context) : SensorEventListener {
 
     fun start() {
         accelerometer?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_FASTEST)
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
             println("Accelerometer registered.")
         } ?: println("No accelerometer available.")
 
         gyroscope?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_FASTEST)
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
             println("Gyroscope registered.")
         } ?: println("No gyroscope available.")
     }
