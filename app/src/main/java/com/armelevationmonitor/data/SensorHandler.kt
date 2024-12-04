@@ -6,11 +6,12 @@ import android.hardware.SensorManager
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
-class SensorHandler(private val context: Context) : SensorEventListener {
+class SensorHandler(val context: Context) : SensorEventListener {
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private var accelerometer: Sensor? = null
-    private var gyroscope: Sensor? = null
+    private var accelerometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+        ?: sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) // Fallback
+    private var gyroscope: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
 
     private val gravity = FloatArray(3) // Gravity vector for fallback logic
     private var linearAcceleration = FloatArray(3)
@@ -28,19 +29,14 @@ class SensorHandler(private val context: Context) : SensorEventListener {
     private val alphaComplementary: Float = 0.98f // Filter factor for complementary filter
     private var previousTimestamp: Long = 0L // To calculate time delta for gyroscope
 
-    init {
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
-            ?: sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) // Fallback
-        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-    }
-
     fun start() {
         accelerometer?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_FASTEST)
             println("Accelerometer registered.")
         } ?: println("No accelerometer available.")
+
         gyroscope?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_FASTEST)
             println("Gyroscope registered.")
         } ?: println("No gyroscope available.")
     }
@@ -62,24 +58,37 @@ class SensorHandler(private val context: Context) : SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        when (event.sensor.type) {
-            Sensor.TYPE_LINEAR_ACCELERATION -> {
-                linearAcceleration = event.values.clone()
-                calculateAlgorithm1()
-                calculateAlgorithm2()
-            }
-            Sensor.TYPE_ACCELEROMETER -> {
-                computeLinearAcceleration(event)
-                calculateAlgorithm1()
-                calculateAlgorithm2()
-            }
-            Sensor.TYPE_GYROSCOPE -> {
-                val dt = calculateDeltaTime(event.timestamp)
-                if (dt > 0) {
-                    val angularVelocityZ = event.values[2]
-                    integratedGyroAngle += angularVelocityZ * dt
+        try {
+            when (event.sensor.type) {
+                Sensor.TYPE_LINEAR_ACCELERATION -> {
+                    linearAcceleration = event.values.clone()
+                    calculateAlgorithm1()
+                    calculateAlgorithm2()
+                    println("Linear Acceleration updated: x=${linearAcceleration[0]}, y=${linearAcceleration[1]}, z=${linearAcceleration[2]}")
+                }
+                Sensor.TYPE_ACCELEROMETER -> {
+                    computeLinearAcceleration(event)
+                    calculateAlgorithm1()
+                    calculateAlgorithm2()
+                    println("Accelerometer updated: x=${event.values[0]}, y=${event.values[1]}, z=${event.values[2]}")
+                }
+                Sensor.TYPE_GYROSCOPE -> {
+                    val dt = calculateDeltaTime(event.timestamp)
+                    if (dt > 0) {
+                        val angularVelocityZ = event.values[2]
+                        integratedGyroAngle += angularVelocityZ * dt
+                        println("Gyroscope updated: angularVelocityZ=$angularVelocityZ, integratedAngle=$integratedGyroAngle")
+                    } else {
+                        println("Gyroscope update skipped due to invalid delta time.")
+                    }
+                }
+                else -> {
+                    println("Unhandled sensor type: ${event.sensor.type}")
                 }
             }
+        } catch (e: Exception) {
+            println("Error processing sensor data: ${e.message}")
+            e.printStackTrace()
         }
     }
 
@@ -122,7 +131,10 @@ class SensorHandler(private val context: Context) : SensorEventListener {
         }
         val dt = (timestamp - previousTimestamp) / 1_000_000_000f
         previousTimestamp = timestamp
-        return dt
+        return maxOf(dt, 1e-6f) // Prevent zero or negative values
+    }
+
+    fun isSensorAvailable(sensorType: Int): Boolean {
+        return sensorManager.getDefaultSensor(sensorType) != null
     }
 }
-

@@ -1,4 +1,6 @@
 import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.*
@@ -14,14 +16,24 @@ class MeasurementViewModel(context: Context) : ViewModel() {
     private var measurementJob: Job? = null
 
     fun connectSensor() {
+        val context = sensorHandler.context // Pass the context if needed
+        if (!isSensorAvailable(context, Sensor.TYPE_LINEAR_ACCELERATION)) {
+            println("Linear Acceleration sensor not available on this device.")
+            return
+        }
+        if (!isSensorAvailable(context, Sensor.TYPE_GYROSCOPE)) {
+            println("Gyroscope sensor not available on this device.")
+            return
+        }
+
         if (!isConnected.value) {
-            sensorHandler.start() // Initialize sensors
             isConnected.value = true
             println("Sensors connected.")
         } else {
             println("Sensors already connected.")
         }
     }
+
 
     fun startMeasurement() {
         if (!isConnected.value) {
@@ -96,5 +108,11 @@ class MeasurementViewModel(context: Context) : ViewModel() {
             "Error exporting data: ${e.message}"
         }
     }
+
+    fun isSensorAvailable(context: Context, sensorType: Int): Boolean {
+        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        return sensorManager.getDefaultSensor(sensorType) != null
+    }
+
 }
 
