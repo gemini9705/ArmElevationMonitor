@@ -23,7 +23,7 @@ class SensorHandler(val context: Context) : SensorEventListener {
         private set
 
     private var previousFilteredAngle: Float = 0f // For EWMA filtering (Algorithm 1)
-    private val alphaEWMA: Float = 0.1f // Reduced smoothing factor for more stability
+    private val alphaEWMA: Float = 0.5f // Reduced smoothing factor for more stability
 
     private var integratedGyroAngle: Float = 0f // For gyroscope integration (Algorithm 2)
     private val alphaComplementary: Float = 0.95f // Reduced reliance on gyroscope

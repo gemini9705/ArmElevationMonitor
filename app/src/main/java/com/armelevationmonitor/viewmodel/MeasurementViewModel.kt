@@ -44,6 +44,8 @@ class MeasurementViewModel(context: Context) : ViewModel() {
         measurementJob?.cancel() // Stop any previous job
         sensorHandler.reset() // Reset the sensor state
 
+        //sensorHandler.calibrate() // Calibrate after resetting the sensor state
+
         measurementDataAlgorithm1.clear()
         measurementDataAlgorithm2.clear()
 
