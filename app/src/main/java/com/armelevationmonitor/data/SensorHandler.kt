@@ -23,7 +23,7 @@ class SensorHandler(val context: Context) : SensorEventListener {
         private set
 
     private var previousFilteredAngle: Float = 0f // For EWMA filtering (Algorithm 1)
-    private val alphaEWMA: Float = 0.5f // Reduced smoothing factor for more stability
+    private val alphaEWMA: Float = 0.1f // Reduced smoothing factor for more stability
 
     private var integratedGyroAngle: Float = 0f // For gyroscope integration (Algorithm 2)
     private val alphaComplementary: Float = 0.95f // Reduced reliance on gyroscope
@@ -57,15 +57,25 @@ class SensorHandler(val context: Context) : SensorEventListener {
         linearAcceleration.fill(0f)
         angularVelocity.fill(0f)
         println("SensorHandler state has been reset.")
+
+        // Automatically calibrate for initial orientation
         start()
+        calibrate()
     }
 
+
     fun calibrate() {
-        // Perform calibration by capturing current angles as bias
-        angleBiasAlgorithm1 = currentAngleAlgorithm1
-        angleBiasAlgorithm2 = currentAngleAlgorithm2
-        println("Calibration completed. Biases set - Algorithm1: $angleBiasAlgorithm1, Algorithm2: $angleBiasAlgorithm2")
+        // Capture the current raw angle as the baseline (bias)
+        val ax = linearAcceleration[0]
+        val ay = linearAcceleration[1]
+        val az = linearAcceleration[2]
+
+        val rawAngle = Math.toDegrees(atan2(ay.toDouble(), sqrt((ax * ax + az * az).toDouble()))).toFloat()
+        angleBiasAlgorithm1 = rawAngle
+        println("Calibration completed. Bias set - Algorithm1: $angleBiasAlgorithm1")
     }
+
+
 
     override fun onSensorChanged(event: SensorEvent) {
         try {
@@ -107,7 +117,7 @@ class SensorHandler(val context: Context) : SensorEventListener {
     }
 
     private fun computeLinearAcceleration(event: SensorEvent) {
-        val alpha = 0.8f // Low-pass filter constant
+        val alpha = 0.98f // Low-pass filter constant
         for (i in 0..2) {
             gravity[i] = alpha * gravity[i] + (1 - alpha) * event.values[i]
             linearAcceleration[i] = event.values[i] - gravity[i]
