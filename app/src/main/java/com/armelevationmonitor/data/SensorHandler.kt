@@ -23,11 +23,14 @@ class SensorHandler(val context: Context) : SensorEventListener {
         private set
 
     private var previousFilteredAngle: Float = 0f // For EWMA filtering (Algorithm 1)
-    private val alphaEWMA: Float = 0.1f // Smoothing factor for EWMA
+    private val alphaEWMA: Float = 0.1f // Reduced smoothing factor for more stability
 
     private var integratedGyroAngle: Float = 0f // For gyroscope integration (Algorithm 2)
-    private val alphaComplementary: Float = 0.98f // Filter factor for complementary filter
+    private val alphaComplementary: Float = 0.95f // Reduced reliance on gyroscope
     private var previousTimestamp: Long = 0L // To calculate time delta for gyroscope
+
+    private var angleBiasAlgorithm1: Float = 0f // For calibration
+    private var angleBiasAlgorithm2: Float = 0f // For calibration
 
     fun start() {
         accelerometer?.let {
@@ -55,6 +58,13 @@ class SensorHandler(val context: Context) : SensorEventListener {
         angularVelocity.fill(0f)
         println("SensorHandler state has been reset.")
         start()
+    }
+
+    fun calibrate() {
+        // Perform calibration by capturing current angles as bias
+        angleBiasAlgorithm1 = currentAngleAlgorithm1
+        angleBiasAlgorithm2 = currentAngleAlgorithm2
+        println("Calibration completed. Biases set - Algorithm1: $angleBiasAlgorithm1, Algorithm2: $angleBiasAlgorithm2")
     }
 
     override fun onSensorChanged(event: SensorEvent) {
@@ -110,7 +120,7 @@ class SensorHandler(val context: Context) : SensorEventListener {
         val az = linearAcceleration[2]
 
         val rawAngle = Math.toDegrees(atan2(ay.toDouble(), sqrt((ax * ax + az * az).toDouble()))).toFloat()
-        currentAngleAlgorithm1 = alphaEWMA * rawAngle + (1 - alphaEWMA) * previousFilteredAngle
+        currentAngleAlgorithm1 = alphaEWMA * rawAngle + (1 - alphaEWMA) * previousFilteredAngle - angleBiasAlgorithm1
         previousFilteredAngle = currentAngleAlgorithm1
     }
 
@@ -121,7 +131,7 @@ class SensorHandler(val context: Context) : SensorEventListener {
 
         val accelerometerAngle = Math.toDegrees(atan2(ay.toDouble(), sqrt((ax * ax + az * az).toDouble()))).toFloat()
         currentAngleAlgorithm2 =
-            alphaComplementary * integratedGyroAngle + (1 - alphaComplementary) * accelerometerAngle
+            alphaComplementary * integratedGyroAngle + (1 - alphaComplementary) * accelerometerAngle - angleBiasAlgorithm2
     }
 
     private fun calculateDeltaTime(timestamp: Long): Float {
