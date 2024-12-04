@@ -12,7 +12,8 @@ class SensorHandler(private val context: Context) : SensorEventListener {
     private var accelerometer: Sensor? = null
     private var gyroscope: Sensor? = null
 
-        private var linearAcceleration = FloatArray(3)
+    private val gravity = FloatArray(3) // Gravity vector for fallback logic
+    private var linearAcceleration = FloatArray(3)
     private var angularVelocity = FloatArray(3)
 
     var currentAngleAlgorithm1: Float = 0f
@@ -29,6 +30,7 @@ class SensorHandler(private val context: Context) : SensorEventListener {
 
     init {
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+            ?: sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) // Fallback
         gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
     }
 
@@ -36,47 +38,28 @@ class SensorHandler(private val context: Context) : SensorEventListener {
         accelerometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
             println("Accelerometer registered.")
-        }
+        } ?: println("No accelerometer available.")
         gyroscope?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
             println("Gyroscope registered.")
-        }
+        } ?: println("No gyroscope available.")
     }
 
     fun stop() {
         sensorManager.unregisterListener(this)
-    }
-
-    fun reset() {
-        stop() // Unregister listeners
-        previousFilteredAngle = 0f
-        integratedGyroAngle = 0f
-        previousTimestamp = 0L
-        linearAcceleration = FloatArray(3)
-        angularVelocity = FloatArray(3)
-        println("SensorHandler state has been reset.")
-
-        // Re-register the sensors
-        start()
-    }
-
-    fun startMeasurement() {
-        accelerometer?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
-            println("Accelerometer registered for measurement.")
-        }
-        gyroscope?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
-            println("Gyroscope registered for measurement.")
-        }
-    }
-
-    fun stopMeasurement() {
-        sensorManager.unregisterListener(this)
         println("Sensors unregistered.")
     }
 
-
+    fun reset() {
+        stop()
+        previousFilteredAngle = 0f
+        integratedGyroAngle = 0f
+        previousTimestamp = 0L
+        linearAcceleration.fill(0f)
+        angularVelocity.fill(0f)
+        println("SensorHandler state has been reset.")
+        start()
+    }
 
     override fun onSensorChanged(event: SensorEvent) {
         when (event.sensor.type) {
@@ -84,22 +67,32 @@ class SensorHandler(private val context: Context) : SensorEventListener {
                 linearAcceleration = event.values.clone()
                 calculateAlgorithm1()
                 calculateAlgorithm2()
-                println("SensorHandler: Linear acceleration updated. Algorithm1: $currentAngleAlgorithm1, Algorithm2: $currentAngleAlgorithm2")
+            }
+            Sensor.TYPE_ACCELEROMETER -> {
+                computeLinearAcceleration(event)
+                calculateAlgorithm1()
+                calculateAlgorithm2()
             }
             Sensor.TYPE_GYROSCOPE -> {
                 val dt = calculateDeltaTime(event.timestamp)
                 if (dt > 0) {
-                    val angularVelocityZ = event.values[2] // Gyroscope rotation around Z-axis
+                    val angularVelocityZ = event.values[2]
                     integratedGyroAngle += angularVelocityZ * dt
-                    println("SensorHandler: Gyroscope updated. Integrated angle: $integratedGyroAngle")
                 }
             }
         }
     }
 
-
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // Handle accuracy changes if necessary
+        println("Sensor: ${sensor?.name}, Accuracy: $accuracy")
+    }
+
+    private fun computeLinearAcceleration(event: SensorEvent) {
+        val alpha = 0.8f // Low-pass filter constant
+        for (i in 0..2) {
+            gravity[i] = alpha * gravity[i] + (1 - alpha) * event.values[i]
+            linearAcceleration[i] = event.values[i] - gravity[i]
+        }
     }
 
     private fun calculateAlgorithm1() {
@@ -107,12 +100,9 @@ class SensorHandler(private val context: Context) : SensorEventListener {
         val ay = linearAcceleration[1]
         val az = linearAcceleration[2]
 
-        // Compute raw tilt angle
         val rawAngle = Math.toDegrees(atan2(ay.toDouble(), sqrt((ax * ax + az * az).toDouble()))).toFloat()
-
-        // Apply EWMA filter
         currentAngleAlgorithm1 = alphaEWMA * rawAngle + (1 - alphaEWMA) * previousFilteredAngle
-        previousFilteredAngle = currentAngleAlgorithm1 // Update for the next iteration
+        previousFilteredAngle = currentAngleAlgorithm1
     }
 
     private fun calculateAlgorithm2() {
@@ -120,10 +110,7 @@ class SensorHandler(private val context: Context) : SensorEventListener {
         val ay = linearAcceleration[1]
         val az = linearAcceleration[2]
 
-        // Compute tilt angle from linear acceleration
         val accelerometerAngle = Math.toDegrees(atan2(ay.toDouble(), sqrt((ax * ax + az * az).toDouble()))).toFloat()
-
-        // Apply complementary filter
         currentAngleAlgorithm2 =
             alphaComplementary * integratedGyroAngle + (1 - alphaComplementary) * accelerometerAngle
     }
@@ -133,8 +120,9 @@ class SensorHandler(private val context: Context) : SensorEventListener {
             previousTimestamp = timestamp
             return 0f
         }
-        val dt = (timestamp - previousTimestamp) / 1_000_000_000f // Convert nanoseconds to seconds
+        val dt = (timestamp - previousTimestamp) / 1_000_000_000f
         previousTimestamp = timestamp
         return dt
     }
 }
+

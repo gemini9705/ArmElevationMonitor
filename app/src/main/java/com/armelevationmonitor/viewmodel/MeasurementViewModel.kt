@@ -15,6 +15,7 @@ class MeasurementViewModel(context: Context) : ViewModel() {
 
     fun connectSensor() {
         if (!isConnected.value) {
+            sensorHandler.start() // Initialize sensors
             isConnected.value = true
             println("Sensors connected.")
         } else {
@@ -28,17 +29,12 @@ class MeasurementViewModel(context: Context) : ViewModel() {
             return
         }
 
-        // Stop any previous measurement job if it exists
-        stopMeasurement()
+        measurementJob?.cancel() // Stop any previous job
+        sensorHandler.reset() // Reset the sensor state
 
-        // Clear previous data
         measurementDataAlgorithm1.clear()
         measurementDataAlgorithm2.clear()
 
-        // Register sensors and start fetching data
-        sensorHandler.startMeasurement()
-
-        // Start the coroutine for periodic updates
         measurementJob = CoroutineScope(Dispatchers.Default).launch {
             println("Measurement coroutine started.")
             while (isActive) {
@@ -53,17 +49,29 @@ class MeasurementViewModel(context: Context) : ViewModel() {
                     measurementDataAlgorithm2.add(Pair(currentTime, angle2))
                     println("Measurement updated. Algorithm1: $angle1, Algorithm2: $angle2")
                 }
-
-                delay(100) // Update every 100ms
+                delay(200) // Adjusted for performance
             }
         }
     }
 
     fun stopMeasurement() {
-        measurementJob?.cancel()
-        measurementJob = null
-        sensorHandler.stopMeasurement()
-        println("Measurement stopped.")
+        if (measurementJob != null) {
+            measurementJob?.cancel()
+            measurementJob = null
+            println("Measurement coroutine stopped.")
+        } else {
+            println("No active measurement job to stop.")
+        }
+
+        sensorHandler.stop() // Stop sensor updates
+        println("SensorHandler stopped.")
+
+        // Keep measurement data intact; no clearing here
+        println("Measurement data preserved.")
+
+        // Reset angles on UI if necessary
+        angleAlgorithm1.value = 0f
+        angleAlgorithm2.value = 0f
     }
 
     fun exportData(context: Context, algorithm: Int): String {
@@ -89,3 +97,4 @@ class MeasurementViewModel(context: Context) : ViewModel() {
         }
     }
 }
+
